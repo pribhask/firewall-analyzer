@@ -16,25 +16,25 @@ import (
 
 // PullRequestEvent is the relevant subset of GitHub's pull_request webhook payload.
 type PullRequestEvent struct {
-	Action      string      `json:"action"`
-	Number      int         `json:"number"`
-	PullRequest PullRequest `json:"pull_request"`
-	Repository  Repository  `json:"repository"`
+	Action       string      `json:"action"`
+	Number       int         `json:"number"`
+	PullRequest  PullRequest `json:"pull_request"`
+	Repository   Repository  `json:"repository"`
 	Installation struct {
 		ID int64 `json:"id"`
 	} `json:"installation"`
 }
 
-// PullRequest contains PR head and base SHA information.
 type PullRequest struct {
 	Number int    `json:"number"`
+	Title  string `json:"title"` // ← add this
 	Head   Commit `json:"head"`
 	Base   Commit `json:"base"`
 }
 
 // Commit represents a git commit ref in a pull request.
 type Commit struct {
-	SHA  string `json:"sha"`
+	SHA  string     `json:"sha"`
 	Repo Repository `json:"repo"`
 }
 
@@ -115,6 +115,7 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		Owner:          event.Repository.Owner.Login,
 		Repo:           event.Repository.Name,
 		PRNumber:       event.Number,
+		PRTitle:        event.PullRequest.Title, // ← add this
 		BaseSHA:        event.PullRequest.Base.SHA,
 		HeadSHA:        event.PullRequest.Head.SHA,
 	}
