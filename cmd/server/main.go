@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/firewall-analyzer/internal/analyzer"
-	"github.com/firewall-analyzer/internal/auth"
+	"github.com/pribhask/firewall-analyzer/internal/analyzer"
+	"github.com/pribhask/firewall-analyzer/internal/auth"
 	githubclient "github.com/pribhask/firewall-analyzer/internal/github"
 	"github.com/pribhask/firewall-analyzer/internal/webhook"
 )

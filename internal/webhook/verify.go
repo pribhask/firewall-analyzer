@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/firewall-analyzer/internal/analyzer"
+	"github.com/pribhask/firewall-analyzer/internal/analyzer"
 )
 
 // PullRequestEvent is the relevant subset of GitHub's pull_request webhook payload.

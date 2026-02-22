@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/firewall-analyzer/internal/terraform"
+	"github.com/pribhask/firewall-analyzer/internal/terraform"
 )
 
 // Reporter generates structured markdown PR comment reports.

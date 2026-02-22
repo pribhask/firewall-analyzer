@@ -3,7 +3,7 @@ package analyzer
 import (
 	"math"
 
-	"github.com/firewall-analyzer/internal/terraform"
+	"github.com/pribhask/firewall-analyzer/internal/terraform"
 )
 
 // RiskLevel categorizes the overall risk score range.

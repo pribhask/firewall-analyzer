@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"strings"
 
-	githubclient "github.com/firewall-analyzer/internal/github"
-	"github.com/firewall-analyzer/internal/terraform"
+	githubclient "github.com/pribhask/firewall-analyzer/internal/github"
+	"github.com/pribhask/firewall-analyzer/internal/terraform"
 )
 
 // PREvent holds the data needed to analyze a pull request.
