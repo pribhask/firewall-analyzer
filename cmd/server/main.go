@@ -6,12 +6,14 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/pribhask/firewall-analyzer/internal/analyzer"
 	"github.com/pribhask/firewall-analyzer/internal/auth"
 	githubclient "github.com/pribhask/firewall-analyzer/internal/github"
@@ -26,6 +28,11 @@ type config struct {
 }
 
 func loadConfig() (*config, error) {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
 	appIDStr := os.Getenv("GITHUB_APP_ID")
 	if appIDStr == "" {
 		return nil, fmt.Errorf("GITHUB_APP_ID environment variable is required")

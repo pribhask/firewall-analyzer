@@ -1,6 +1,7 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -186,6 +187,146 @@ func (c *Client) PostComment(ctx context.Context, installationID int64, owner, r
 	}
 
 	return nil
+}
+
+// ApprovePR submits an approving review on a pull request.
+func (c *Client) ApprovePR(ctx context.Context, installationID int64, owner, repo string, prNumber int, commitSHA string) error {
+	token, err := c.tokenProvider.GetToken(ctx, installationID)
+	if err != nil {
+		return fmt.Errorf("getting installation token: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews", apiBase, owner, repo, prNumber)
+
+	payload := struct {
+		CommitID string `json:"commit_id"`
+		Event    string `json:"event"`
+		Body     string `json:"body"`
+	}{
+		CommitID: commitSHA,
+		Event:    "APPROVE",
+		Body:     "✅ Auto-approved: PR title contains `automerge` keyword.",
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshaling approve payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	c.setHeaders(req, token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("executing request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %d approving PR", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// EnableAutoMerge enables auto-merge on a PR via GitHub's GraphQL API.
+// mergeMethod is one of: MERGE, SQUASH, REBASE
+func (c *Client) EnableAutoMerge(ctx context.Context, installationID int64, owner, repo string, prNumber int, mergeMethod string) error {
+	token, err := c.tokenProvider.GetToken(ctx, installationID)
+	if err != nil {
+		return fmt.Errorf("getting installation token: %w", err)
+	}
+
+	// First, get the PR node ID (GraphQL ID) via REST
+	prNodeID, err := c.getPRNodeID(ctx, token, owner, repo, prNumber)
+	if err != nil {
+		return fmt.Errorf("getting PR node ID: %w", err)
+	}
+
+	// GraphQL mutation to enable auto-merge
+	query := fmt.Sprintf(`
+		mutation {
+			enablePullRequestAutoMerge(input: {
+				pullRequestId: "%s",
+				mergeMethod: %s
+			}) {
+				pullRequest {
+					autoMergeRequest {
+						enabledAt
+					}
+				}
+			}
+		}`, prNodeID, mergeMethod)
+
+	gqlPayload := struct {
+		Query string `json:"query"`
+	}{Query: query}
+
+	payloadBytes, err := json.Marshal(gqlPayload)
+	if err != nil {
+		return fmt.Errorf("marshaling graphql payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql",
+		bytes.NewReader(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("creating graphql request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("executing graphql request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %d from GraphQL endpoint", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// getPRNodeID fetches the GraphQL node_id for a pull request.
+func (c *Client) getPRNodeID(ctx context.Context, token, owner, repo string, prNumber int) (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", apiBase, owner, repo, prNumber)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+
+	c.setHeaders(req, token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("executing request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
+
+	var pr struct {
+		NodeID string `json:"node_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+		return "", fmt.Errorf("decoding response: %w", err)
+	}
+
+	if pr.NodeID == "" {
+		return "", fmt.Errorf("empty node_id returned for PR")
+	}
+
+	return pr.NodeID, nil
 }
 
 func (c *Client) setHeaders(req *http.Request, token string) {
