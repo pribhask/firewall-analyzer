@@ -65,6 +65,7 @@ func loadConfig() (*config, error) {
 	}, nil
 }
 
+// test commit
 func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
 	keyData, err := os.ReadFile(path)
 	if err != nil {
